@@ -21,6 +21,54 @@
       value: value
     });
   }
+  var LIFECYCLE_HOOKS = ['beforeCreate', 'created', 'beforeMount', 'mounted', 'beforeUpdate', 'updated', 'beforeDestroy', 'destroyed'];
+  var strats = {};
+  LIFECYCLE_HOOKS.forEach(function (hook) {
+    strats[hook] = mergeHook;
+  });
+
+  function mergeHook(parentVal, childVal) {
+    if (childVal) {
+      if (parentVal) {
+        return parentVal.concat(childVal);
+      } else {
+        return [childVal];
+      }
+    }
+  }
+
+  function mergeOptions(parent, child) {
+    var options = {};
+
+    for (var key in parent) {
+      mergeField(key);
+    }
+
+    for (var _key in child) {
+      if (!parent.hasOwnProperty(_key)) {
+        mergeField(_key);
+      }
+    }
+
+    function mergeField(key) {
+      if (strats[key]) {
+        options[key] = strats[key](parent[key], child[key]);
+      } else {
+        options[key] = child[key];
+      }
+    }
+
+    return options;
+  }
+  function callHook(vm, hook) {
+    var handlers = vm.$options[hook];
+
+    if (handlers) {
+      handlers.forEach(function (handler) {
+        handler.call(vm);
+      });
+    }
+  }
 
   function _typeof(obj) {
     "@babel/helpers - typeof";
@@ -533,20 +581,29 @@
     };
   }
   function mountComponent(vm, el) {
+    callHook(vm, 'beforeMount');
+
     vm._update(vm._render());
+
+    callHook(vm, 'mounted');
   }
 
   function initMixin(Vue) {
     Vue.prototype._init = function (options) {
       var vm = this; // 实例
+      // 要把全局的合并一起
 
-      vm.$options = options; // 属性挂在实例的$options
+      vm.$options = mergeOptions(vm.constructor.options, options); // 属性挂在实例的$options
 
+      callHook(vm, 'beforeCreate');
       initState(vm);
+      callHook(vm, 'created');
 
       if (vm.$options.el) {
         vm.$mount(vm.$options.el);
       }
+
+      console.log(vm.$options);
     };
 
     Vue.prototype.$mount = function (el) {
@@ -622,10 +679,19 @@
     };
   }
 
+  function initGlobalApi(Vue) {
+    Vue.options = {}; // 要将mixin合并到去全局配置中
+
+    Vue.mixin = function (mixin) {
+      this.options = mergeOptions(this.options, mixin);
+    };
+  }
+
   function Vue(options) {
     this._init(options);
   }
 
+  initGlobalApi(Vue);
   initMixin(Vue);
   lifeCycleMixin(Vue);
   renderMixin(Vue);

@@ -1,14 +1,19 @@
 import { initState } from "./state"
 import { compileToFunctions } from "./compiler/index"
 import { mountComponent } from "./lifecycle";
+import { mergeOptions, callHook } from "./util";
 export function initMixin(Vue) {
   Vue.prototype._init = function (options) {
     const vm = this // 实例
-    vm.$options = options // 属性挂在实例的$options
+    // 要把全局的合并一起
+    vm.$options = mergeOptions(vm.constructor.options, options) // 属性挂在实例的$options
+    callHook(vm, 'beforeCreate')
     initState(vm)
+    callHook(vm, 'created')
     if(vm.$options.el){
       vm.$mount(vm.$options.el)
     }
+    console.log(vm.$options)
   }
   Vue.prototype.$mount = function (el) {
     const vm = this;

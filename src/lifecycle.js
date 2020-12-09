@@ -1,4 +1,5 @@
 import { patch } from "./vdom/patch";
+import { callHook } from "./util";
 export function lifeCycleMixin (Vue) {
   Vue.prototype._update = function (vnode) {
     const vm = this
@@ -7,5 +8,7 @@ export function lifeCycleMixin (Vue) {
 }
 
 export function mountComponent (vm, el) {
+  callHook(vm, 'beforeMount')
   vm._update(vm._render())
+  callHook(vm, 'mounted')
 }
