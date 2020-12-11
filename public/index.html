@@ -35,6 +35,10 @@
             }
         });
        console.log(vm.arr)
+       setTimeout(function(){
+           vm.school.name = 'cai'
+           console.log(vm.school.name)
+       }, 2000)
         // 默认弄个数据会递归去用defineProperty进行拦截，性能差 -》 proxy
         // 我们开发功能时很少对数组索引进行操作,为了性能考虑不对数组进行拦截 
         // 拦截可以改变数组的方法进行操作

@@ -13,12 +13,12 @@ export function initMixin(Vue) {
     if(vm.$options.el){
       vm.$mount(vm.$options.el)
     }
-    console.log(vm.$options)
   }
   Vue.prototype.$mount = function (el) {
     const vm = this;
     const options = vm.$options;
     el = document.querySelector(el);
+    console.log('el', el)
     vm.$el = el;
     if(!options.render){
       // 没render 将template转化成render方法

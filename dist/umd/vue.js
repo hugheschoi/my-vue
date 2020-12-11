@@ -196,6 +196,50 @@
     };
   });
 
+  // depend依赖, 收集依赖的
+  var id = 0;
+
+  var Dep = /*#__PURE__*/function () {
+    function Dep() {
+      _classCallCheck(this, Dep);
+
+      this.subs = [];
+      this.id = id++;
+    } // 建立关联，依赖关系
+
+
+    _createClass(Dep, [{
+      key: "depend",
+      value: function depend() {
+        Dep.target.addDep(this);
+      } // 往中介添加
+
+    }, {
+      key: "addSub",
+      value: function addSub(watcher) {
+        this.subs.push(watcher);
+      } // 通知
+
+    }, {
+      key: "notify",
+      value: function notify() {
+        this.subs.forEach(function (watcher) {
+          return watcher.update();
+        });
+      }
+    }]);
+
+    return Dep;
+  }();
+
+  Dep.target = null;
+  function pushTarget(watcher) {
+    Dep.target = watcher;
+  }
+  function popTarget() {
+    Dep.target = null;
+  }
+
   function observe(data) {
     if (_typeof(data) !== 'object' || data == null) {
       return data;
@@ -244,14 +288,20 @@
 
   function defineReactive(data, key, value) {
     observe(value);
+    var dep = new Dep();
     Object.defineProperty(data, key, {
       get: function get() {
+        if (Dep.target) {
+          dep.addSub(Dep.target);
+        }
+
         return value;
       },
       set: function set(newValue) {
         if (newValue === value) return;
         observe(newValue);
         value = newValue;
+        dep.notify();
       }
     });
   }
@@ -515,9 +565,8 @@
   }
 
   function compileToFunctions(template) {
-    console.log(template); // return template
+    // return template
     // 1. 将template转成ast树， 这样做的目的是，用js对象更方便后续操作
-
     var ast = parseHTML(template);
     /* console.log(ast)
       {
@@ -546,10 +595,17 @@
   }
 
   function patch(oldVnode, vnode) {
-    var el = createElm(vnode);
-    var parentElm = oldVnode.parentNode;
-    parentElm.insertBefore(el, oldVnode.nextSibling);
-    parentElm.removeChild(oldVnode);
+    // oldVnode => id#app   vnode 我们根据模板产生的虚拟dom
+    // 将虚拟节点转化成真实节点
+    var el = createElm(vnode); // 产生真实的dom 
+
+    var parentElm = oldVnode.parentNode; // 获取老的app的父亲 =》 body
+
+    parentElm.insertBefore(el, oldVnode.nextSibling); // 当前的真实元素插入到app的后面
+
+    parentElm.removeChild(oldVnode); // 删除老的节点
+
+    return el;
   }
 
   function createElm(vnode) {
@@ -561,7 +617,9 @@
 
     if (typeof tag == 'string') {
       // 创建元素 放到vnode.el上
-      vnode.el = document.createElement(tag);
+      vnode.el = document.createElement(tag); // 只有元素才有属性
+
+      updateProperties(vnode);
       children.forEach(function (child) {
         // 遍历儿子 将儿子渲染后的结果扔到父亲中
         vnode.el.appendChild(createElm(child));
@@ -572,18 +630,105 @@
     }
 
     return vnode.el;
+  } // vue 的渲染流程 =》 先初始化数据 =》 将模板进行编译 =》 render函数 =》 生成虚拟节点 =》 生成真实的dom  =》 扔到页面上
+
+
+  function updateProperties(vnode) {
+    var el = vnode.el;
+    var newProps = vnode.data || {};
+
+    for (var key in newProps) {
+      if (key == 'style') {
+        // {color:red}
+        for (var styleName in newProps.style) {
+          el.style[styleName] = newProps.style[styleName];
+        }
+      } else if (key == 'class') {
+        el.className = el["class"];
+      } else {
+        el.setAttribute(key, newProps[key]);
+      }
+    }
   }
+
+  var Watcher = /*#__PURE__*/function () {
+    function Watcher(vm, exprOrFn, cb, options) {
+      _classCallCheck(this, Watcher);
+
+      this.deps = []; // watcher记录有多少dep依赖他
+
+      this.depsId = new Set();
+      this.vm = vm;
+      this.exprOrFn = exprOrFn;
+      this.cb = cb;
+      this.options = options;
+
+      if (typeof exprOrFn === 'function') {
+        this.getter = exprOrFn;
+      }
+
+      this.value = this.get();
+    }
+
+    _createClass(Watcher, [{
+      key: "get",
+      value: function get() {
+        pushTarget(this);
+        var result = this.getter();
+        popTarget();
+        return result;
+      }
+    }, {
+      key: "addDep",
+      value: function addDep(dep) {
+        var id = dep.id;
+
+        if (!this.depsId.has(id)) {
+          this.deps.push(dep);
+          this.depsId.add(id);
+          dep.addSub(this);
+        }
+      }
+    }, {
+      key: "run",
+      value: function run() {
+        this.get();
+      }
+    }, {
+      key: "update",
+      value: function update() {
+        this.run();
+      }
+    }]);
+
+    return Watcher;
+  }();
 
   function lifeCycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
       var vm = this;
-      patch(vm.$el, vnode);
+      console.log(vm.$el); // 用新的创建的元素 替换老的vm.$el
+
+      vm.$el = patch(vm.$el, vnode);
     };
   }
   function mountComponent(vm, el) {
+    vm.$el = el; // 调用render方法去渲染 el属性
+    // 先调用render方法创建虚拟节点，在将虚拟节点渲染到页面上
+
     callHook(vm, 'beforeMount');
 
-    vm._update(vm._render());
+    var updateComponent = function updateComponent() {
+      vm._update(vm._render()); // 渲染 、 更新
+
+    }; // 这个watcher是用于渲染的 目前没有任何功能  updateComponent()
+    // 初始化就会创建watcher
+
+
+    var watcher = new Watcher(vm, updateComponent, function () {
+      callHook(vm, 'updated');
+    }, true); // 渲染watcher 只是个名字
+    // 要把属性 和 watcher绑定在一起 
 
     callHook(vm, 'mounted');
   }
@@ -602,14 +747,13 @@
       if (vm.$options.el) {
         vm.$mount(vm.$options.el);
       }
-
-      console.log(vm.$options);
     };
 
     Vue.prototype.$mount = function (el) {
       var vm = this;
       var options = vm.$options;
       el = document.querySelector(el);
+      console.log('el', el);
       vm.$el = el;
 
       if (!options.render) {
@@ -626,14 +770,17 @@
       } // 都解析成render函数之后，挂载组件
 
 
-      mountComponent(vm);
+      mountComponent(vm, el);
     };
   }
 
   function renderMixin(Vue) {
+    // 用对象来描述dom的解构
     Vue.prototype._c = function () {
+      // 创建虚拟dom元素
       return createElement.apply(void 0, arguments);
-    };
+    }; // 1.当结果是对象时 会对这个对象取值
+
 
     Vue.prototype._s = function (val) {
       // stringify
@@ -646,10 +793,9 @@
     };
 
     Vue.prototype._render = function () {
-      var vm = this; // Vue的实例有_render方法调用_render所以this是vue
-
-      var render = vm.$options.render; // $options挂上了所有得到属性
-
+      // _render = render
+      var vm = this;
+      var render = vm.$options.render;
       var vnode = render.call(vm);
       return vnode;
     };
@@ -667,7 +813,8 @@
 
   function createTextVnode(text) {
     return vnode(undefined, undefined, undefined, undefined, text);
-  }
+  } // 用来产生虚拟dom的,操作真实dom浪费性能
+
 
   function vnode(tag, data, key, children, text) {
     return {

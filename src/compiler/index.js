@@ -1,7 +1,6 @@
 import { parseHTML } from "./parse";
 import { generate } from "./generate";
 export function compileToFunctions (template) {
-  console.log(template)
   // return template
   // 1. 将template转成ast树， 这样做的目的是，用js对象更方便后续操作
   let ast = parseHTML(template)

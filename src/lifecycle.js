@@ -1,14 +1,31 @@
 import { patch } from "./vdom/patch";
 import { callHook } from "./util";
+import Watcher from './observer/watcher'
 export function lifeCycleMixin (Vue) {
   Vue.prototype._update = function (vnode) {
     const vm = this
-    patch(vm.$el, vnode)
+    console.log(vm.$el)
+    // 用新的创建的元素 替换老的vm.$el
+    vm.$el = patch(vm.$el,vnode)
   }
 }
 
 export function mountComponent (vm, el) {
-  callHook(vm, 'beforeMount')
-  vm._update(vm._render())
-  callHook(vm, 'mounted')
+  vm.$el = el;
+  // 调用render方法去渲染 el属性
+  // 先调用render方法创建虚拟节点，在将虚拟节点渲染到页面上
+  callHook(vm,'beforeMount')
+  let updateComponent = ()=>{
+      vm._update(vm._render()); // 渲染 、 更新
+  }
+  // 这个watcher是用于渲染的 目前没有任何功能  updateComponent()
+
+  // 初始化就会创建watcher
+  let watcher = new Watcher(vm,updateComponent,()=>{
+      callHook(vm,'updated')
+  },true); // 渲染watcher 只是个名字
+
+  // 要把属性 和 watcher绑定在一起 
+  
+  callHook(vm,'mounted');
 }
