@@ -4,7 +4,7 @@ import Dep from './dep'
 
 export function observe(data) {
   if(typeof data !== 'object' || data == null){
-      return data;
+      return;
   }
   if(data.__ob__){
       return data;
@@ -14,6 +14,7 @@ export function observe(data) {
 
 class Observer {
   constructor (data) {
+    this.dep = new Dep()
     defineProperty(data, '__ob__', this)
     if (Array.isArray(data)) {
       data.__proto__ = arrayMethods
@@ -34,12 +35,15 @@ class Observer {
   }
 }
 function defineReactive(data, key, value) {
-  observe(value)
+  let valueObserver = observe(value)
   const dep = new Dep()
   Object.defineProperty(data, key, {
     get () {
       if (Dep.target) {
         dep.addSub(Dep.target)
+        if (valueObserver) {
+          valueObserver.dep.addSub(Dep.target)
+        }
       }
       return value
     },

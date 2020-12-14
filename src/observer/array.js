@@ -12,7 +12,7 @@ let methods = [
 ]
 methods.forEach(method => {
   arrayMethods[method] = function(...args) {
-    const result = arrayMethods[method].apply(this, args)
+    const result = oldArrayProtoMethods[method].apply(this, args)
     let inserted
     let ob = this.__ob__ // this指向的是调用着，也就是数组类型的data，在Observer包装data的时候，就初始化来__ob__给data， 所以这个data有__ob__属性， 指向的是Observer, 就有observeArray的方法来
     switch (method) {
@@ -26,6 +26,7 @@ methods.forEach(method => {
           break;
     }
     if(inserted) ob.observeArray(inserted); // 给数组新增的值也要进行观测
+    ob.dep.notify()
     return result
   }
 })

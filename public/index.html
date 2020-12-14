@@ -16,6 +16,9 @@
         <li>
             {{school.age}}
         </li>
+        <li>
+            {{arr}}
+        </li>
     </div>
     <script src="/dist/umd/vue.js"></script>
     <script>
@@ -37,6 +40,8 @@
        console.log(vm.arr)
        setTimeout(function(){
            vm.school.name = 'cai'
+           vm.arr.push(4)
+           console.log(vm.arr)
            console.log(vm.school.name)
        }, 2000)
         // 默认弄个数据会递归去用defineProperty进行拦截，性能差 -》 proxy
