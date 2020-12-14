@@ -173,7 +173,7 @@
         args[_key] = arguments[_key];
       }
 
-      var result = arrayMethods[method].apply(this, args);
+      var result = oldArrayProtoMethods[method].apply(this, args);
       var inserted;
       var ob = this.__ob__; // this指向的是调用着，也就是数组类型的data，在Observer包装data的时候，就初始化来__ob__给data， 所以这个data有__ob__属性， 指向的是Observer, 就有observeArray的方法来
 
@@ -192,6 +192,7 @@
 
       if (inserted) ob.observeArray(inserted); // 给数组新增的值也要进行观测
 
+      ob.dep.notify();
       return result;
     };
   });
@@ -242,7 +243,7 @@
 
   function observe(data) {
     if (_typeof(data) !== 'object' || data == null) {
-      return data;
+      return;
     }
 
     if (data.__ob__) {
@@ -256,6 +257,7 @@
     function Observer(data) {
       _classCallCheck(this, Observer);
 
+      this.dep = new Dep();
       defineProperty(data, '__ob__', this);
 
       if (Array.isArray(data)) {
@@ -287,12 +289,16 @@
   }();
 
   function defineReactive(data, key, value) {
-    observe(value);
+    var valueObserver = observe(value);
     var dep = new Dep();
     Object.defineProperty(data, key, {
       get: function get() {
         if (Dep.target) {
           dep.addSub(Dep.target);
+
+          if (valueObserver) {
+            valueObserver.dep.addSub(Dep.target);
+          }
         }
 
         return value;
