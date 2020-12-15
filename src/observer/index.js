@@ -40,9 +40,9 @@ function defineReactive(data, key, value) {
   Object.defineProperty(data, key, {
     get () {
       if (Dep.target) {
-        dep.addSub(Dep.target)
+        dep.depend()
         if (valueObserver) {
-          valueObserver.dep.addSub(Dep.target)
+          valueObserver.dep.depend()
         }
       }
       return value

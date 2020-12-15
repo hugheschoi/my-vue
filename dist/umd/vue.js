@@ -4,6 +4,149 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.Vue = factory());
 }(this, (function () { 'use strict';
 
+  function _typeof(obj) {
+    "@babel/helpers - typeof";
+
+    if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
+      _typeof = function (obj) {
+        return typeof obj;
+      };
+    } else {
+      _typeof = function (obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+      };
+    }
+
+    return _typeof(obj);
+  }
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _defineProperty(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  function ownKeys(object, enumerableOnly) {
+    var keys = Object.keys(object);
+
+    if (Object.getOwnPropertySymbols) {
+      var symbols = Object.getOwnPropertySymbols(object);
+      if (enumerableOnly) symbols = symbols.filter(function (sym) {
+        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+      });
+      keys.push.apply(keys, symbols);
+    }
+
+    return keys;
+  }
+
+  function _objectSpread2(target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i] != null ? arguments[i] : {};
+
+      if (i % 2) {
+        ownKeys(Object(source), true).forEach(function (key) {
+          _defineProperty(target, key, source[key]);
+        });
+      } else if (Object.getOwnPropertyDescriptors) {
+        Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+      } else {
+        ownKeys(Object(source)).forEach(function (key) {
+          Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+        });
+      }
+    }
+
+    return target;
+  }
+
+  function _slicedToArray(arr, i) {
+    return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
+  }
+
+  function _arrayWithHoles(arr) {
+    if (Array.isArray(arr)) return arr;
+  }
+
+  function _iterableToArrayLimit(arr, i) {
+    if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return;
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+    var _e = undefined;
+
+    try {
+      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"] != null) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  function _unsupportedIterableToArray(o, minLen) {
+    if (!o) return;
+    if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+    var n = Object.prototype.toString.call(o).slice(8, -1);
+    if (n === "Object" && o.constructor) n = o.constructor.name;
+    if (n === "Map" || n === "Set") return Array.from(o);
+    if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+  }
+
+  function _arrayLikeToArray(arr, len) {
+    if (len == null || len > arr.length) len = arr.length;
+
+    for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
+
+    return arr2;
+  }
+
+  function _nonIterableRest() {
+    throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+  }
+
   function proxy(vm, data, key) {
     Object.defineProperty(vm, key, {
       get: function get() {
@@ -69,99 +212,59 @@
       });
     }
   }
+  var callbacks = [];
+  var pending = false;
 
-  function _typeof(obj) {
-    "@babel/helpers - typeof";
+  function flushCallbacks() {
+    console.log('callbacks', callbacks);
 
-    if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
-      _typeof = function (obj) {
-        return typeof obj;
-      };
-    } else {
-      _typeof = function (obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
-      };
+    while (callbacks.length) {
+      var cb = callbacks.shift();
+      cb();
+    } // 让nextTick中传入的方法依次执行
+
+
+    pending = false; // 标识已经执行完毕
+  }
+
+  var timerFunc;
+
+  if (Promise) {
+    timerFunc = function timerFunc() {
+      Promise.resolve().then(flushCallbacks); // 异步处理更新
+    };
+  } else if (MutationObserver) {
+    // 可以监控dom变化,监控完毕后是异步更新
+    var observe = new MutationObserver(flushCallbacks);
+    var textNode = document.createTextNode(1); // 先创建一个文本节点
+
+    observe.observe(textNode, {
+      characterData: true
+    }); // 观测文本节点中的内容
+
+    timerFunc = function timerFunc() {
+      textNode.textContent = 2; // 文中的内容改成2
+    };
+  } else if (setImmediate) {
+    timerFunc = function timerFunc() {
+      setImmediate(flushCallbacks);
+    };
+  } else {
+    timerFunc = function timerFunc() {
+      setTimeout(flushCallbacks);
+    };
+  }
+
+  function nextTick(cb) {
+    // 因为内部会调用nextTick 用户也会调用，但是异步只需要一次
+    callbacks.push(cb);
+
+    if (!pending) {
+      // vue3 里的nextTick原理就是promise.then 没有做兼容性处理了
+      timerFunc(); // 这个方法是异步方法 做了兼容处理了
+
+      pending = true;
     }
-
-    return _typeof(obj);
-  }
-
-  function _classCallCheck(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _slicedToArray(arr, i) {
-    return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
-  }
-
-  function _arrayWithHoles(arr) {
-    if (Array.isArray(arr)) return arr;
-  }
-
-  function _iterableToArrayLimit(arr, i) {
-    if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return;
-    var _arr = [];
-    var _n = true;
-    var _d = false;
-    var _e = undefined;
-
-    try {
-      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
-        _arr.push(_s.value);
-
-        if (i && _arr.length === i) break;
-      }
-    } catch (err) {
-      _d = true;
-      _e = err;
-    } finally {
-      try {
-        if (!_n && _i["return"] != null) _i["return"]();
-      } finally {
-        if (_d) throw _e;
-      }
-    }
-
-    return _arr;
-  }
-
-  function _unsupportedIterableToArray(o, minLen) {
-    if (!o) return;
-    if (typeof o === "string") return _arrayLikeToArray(o, minLen);
-    var n = Object.prototype.toString.call(o).slice(8, -1);
-    if (n === "Object" && o.constructor) n = o.constructor.name;
-    if (n === "Map" || n === "Set") return Array.from(o);
-    if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
-  }
-
-  function _arrayLikeToArray(arr, len) {
-    if (len == null || len > arr.length) len = arr.length;
-
-    for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
-
-    return arr2;
-  }
-
-  function _nonIterableRest() {
-    throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
   }
 
   var oldArrayProtoMethods = Array.prototype;
@@ -212,6 +315,7 @@
     _createClass(Dep, [{
       key: "depend",
       value: function depend() {
+        // Dep.target.addDep(this)
         Dep.target.addDep(this);
       } // 往中介添加
 
@@ -241,7 +345,7 @@
     Dep.target = null;
   }
 
-  function observe(data) {
+  function observe$1(data) {
     if (_typeof(data) !== 'object' || data == null) {
       return;
     }
@@ -280,7 +384,7 @@
       key: "observeArray",
       value: function observeArray(data) {
         for (var i = 0; i < data.length; i++) {
-          observe(data[i]);
+          observe$1(data[i]);
         }
       }
     }]);
@@ -289,15 +393,15 @@
   }();
 
   function defineReactive(data, key, value) {
-    var valueObserver = observe(value);
+    var valueObserver = observe$1(value);
     var dep = new Dep();
     Object.defineProperty(data, key, {
       get: function get() {
         if (Dep.target) {
-          dep.addSub(Dep.target);
+          dep.depend();
 
           if (valueObserver) {
-            valueObserver.dep.addSub(Dep.target);
+            valueObserver.dep.depend();
           }
         }
 
@@ -305,20 +409,140 @@
       },
       set: function set(newValue) {
         if (newValue === value) return;
-        observe(newValue);
+        observe$1(newValue);
         value = newValue;
         dep.notify();
       }
     });
   }
 
+  var has = {};
+  var queue = [];
+  var pending$1 = false;
+  function queueWatcher(watcher) {
+    var id = watcher;
+
+    if (has[id] == null) {
+      queue.push(watcher);
+      has[id] = true; // 开启异步，会等待所有同步后再执行
+      // setTimeout(() => {
+      //   flushSchedulerQueue()
+      // }, 0)
+
+      if (!pending$1) {
+        nextTick(flushSchedulerQueue);
+        pending$1 = true;
+      }
+    }
+  }
+  function flushSchedulerQueue() {
+    queue.forEach(function (watcher) {
+      watcher.run();
+
+      if (!watcher.user) {
+        watcher.cb();
+      }
+    });
+    queue = [];
+    has = {};
+    pending$1 = false;
+  }
+
+  var Watcher = /*#__PURE__*/function () {
+    function Watcher(vm, exprOrFn, cb, options) {
+      _classCallCheck(this, Watcher);
+
+      this.deps = []; // watcher记录有多少dep依赖他
+
+      this.depsId = new Set();
+      this.vm = vm;
+      this.exprOrFn = exprOrFn;
+      this.cb = cb;
+      this.options = options;
+      /**
+       * var obj = true; obj.user // undefined
+       */
+
+      this.user = options.user;
+
+      if (typeof exprOrFn === 'function') {
+        this.getter = exprOrFn;
+      } else {
+        this.getter = function () {
+          // 拿到实例上的值
+          var path = exprOrFn.split('.');
+          var obj = vm;
+
+          for (var i = 0; i < path.length; i++) {
+            obj = obj[path[i]];
+          }
+
+          return obj;
+        };
+      }
+
+      this.value = this.get(); // 默认先调用一次get，进行取值，将结果赋值给this.value
+      // 比如 vm.a.a 的值
+    }
+
+    _createClass(Watcher, [{
+      key: "get",
+      value: function get() {
+        pushTarget(this);
+        var result = this.getter();
+        popTarget();
+        return result;
+      }
+    }, {
+      key: "addDep",
+      value: function addDep(dep) {
+        var id = dep.id;
+
+        if (!this.depsId.has(id)) {
+          this.deps.push(dep);
+          this.depsId.add(id);
+          dep.addSub(this);
+        }
+      } // 更新值后，批量更新最后会走到run
+      // 如果是watch，那么this.value是老值，this.get()是新值
+
+    }, {
+      key: "run",
+      value: function run() {
+        // this.get()
+        console.log('run');
+        var newValue = this.get();
+        var oldValue = this.value;
+        this.value = newValue;
+
+        if (this.user) {
+          // 如果是用户watcher
+          this.cb.call(this.vm, newValue, oldValue);
+        }
+      }
+    }, {
+      key: "update",
+      value: function update() {
+        console.log('update', this); // this.run()
+
+        queueWatcher(this);
+      }
+    }]);
+
+    return Watcher;
+  }();
+
   function initState(vm) {
-    var opt = vm.$options;
+    var opts = vm.$options;
 
-    if (opt.props) ;
+    if (opts.props) ;
 
-    if (opt.data) {
+    if (opts.data) {
       initData(vm);
+    }
+
+    if (opts.watch) {
+      initWatch(vm);
     }
   }
 
@@ -331,7 +555,72 @@
       proxy(vm, '_data', key);
     }
 
-    observe(data);
+    observe$1(data);
+  }
+
+  function initWatch(vm) {
+    var watch = vm.$options.watch;
+
+    var _loop = function _loop(key) {
+      var handler = watch[key]; // handler可能是 
+
+      if (Array.isArray(handler)) {
+        // 数组 、
+        handler.forEach(function (handle) {
+          createWatcher(vm, key, handle);
+        });
+      } else {
+        createWatcher(vm, key, handler); // 字符串 、 对象 、 函数
+      }
+    };
+
+    for (var key in watch) {
+      _loop(key);
+    }
+  }
+  /**
+   *   可能是一个函数，所以key就叫它exprOrFn好老
+   *      vm.$watch(()=>{
+              return vm.a.a.a; // 老值
+          },(newValue,oldValue)=>{
+              console.log(newValue,oldValue,'自己写的$watch')
+          })
+   */
+  // options 可以用来标识 是用户watcher
+
+
+  function createWatcher(vm, exprOrFn, handler, options) {
+    if (_typeof(handler) == 'object') {
+      options = handler;
+      handler = handler.handler; // 是一个函数
+    }
+
+    if (typeof handler == 'string') {
+      // methods的情况
+      handler = vm[handler]; // 将实例的方法作为handler
+    } // key handler 用户传入的选项
+
+
+    return vm.$watch(exprOrFn, handler, options);
+  }
+
+  function stateMixin(Vue) {
+    Vue.prototype.$nextTick = function (cb) {
+      nextTick(cb);
+    };
+
+    Vue.prototype.$watch = function (exprOrFn, cb) {
+      var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+      console.log('$watch', this); // 数据应该依赖这个watcher  数据变化后应该让watcher从新执行
+
+      var watcher = new Watcher(this, exprOrFn, cb, _objectSpread2(_objectSpread2({}, options), {}, {
+        user: true
+      }));
+
+      if (options.immediate) {
+        cb(); // 如果是immdiate应该立刻执行
+      }
+    };
   }
 
   var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z]*"; // 标签名
@@ -657,63 +946,9 @@
     }
   }
 
-  var Watcher = /*#__PURE__*/function () {
-    function Watcher(vm, exprOrFn, cb, options) {
-      _classCallCheck(this, Watcher);
-
-      this.deps = []; // watcher记录有多少dep依赖他
-
-      this.depsId = new Set();
-      this.vm = vm;
-      this.exprOrFn = exprOrFn;
-      this.cb = cb;
-      this.options = options;
-
-      if (typeof exprOrFn === 'function') {
-        this.getter = exprOrFn;
-      }
-
-      this.value = this.get();
-    }
-
-    _createClass(Watcher, [{
-      key: "get",
-      value: function get() {
-        pushTarget(this);
-        var result = this.getter();
-        popTarget();
-        return result;
-      }
-    }, {
-      key: "addDep",
-      value: function addDep(dep) {
-        var id = dep.id;
-
-        if (!this.depsId.has(id)) {
-          this.deps.push(dep);
-          this.depsId.add(id);
-          dep.addSub(this);
-        }
-      }
-    }, {
-      key: "run",
-      value: function run() {
-        this.get();
-      }
-    }, {
-      key: "update",
-      value: function update() {
-        this.run();
-      }
-    }]);
-
-    return Watcher;
-  }();
-
   function lifeCycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
-      var vm = this;
-      console.log(vm.$el); // 用新的创建的元素 替换老的vm.$el
+      var vm = this; // 用新的创建的元素 替换老的vm.$el
 
       vm.$el = patch(vm.$el, vnode);
     };
@@ -759,8 +994,6 @@
       var vm = this;
       var options = vm.$options;
       el = document.querySelector(el);
-      console.log('el', el);
-      vm.$el = el;
 
       if (!options.render) {
         // 没render 将template转化成render方法
@@ -848,6 +1081,7 @@
   initMixin(Vue);
   lifeCycleMixin(Vue);
   renderMixin(Vue);
+  stateMixin(Vue);
 
   return Vue;
 

@@ -15,7 +15,8 @@ export default {
         serve({ // 打开的浏览器 端口是3000端口
           port:3000,
           contentBase:'',
-          openPage:'/public/index.html' // 打开页面是谁
+          openPage:'/public/watch.html' // 打开页面是谁
+        //   openPage:'/public/index.html' // 打开页面是谁
         })
     ]
 }

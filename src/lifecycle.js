@@ -4,7 +4,6 @@ import Watcher from './observer/watcher'
 export function lifeCycleMixin (Vue) {
   Vue.prototype._update = function (vnode) {
     const vm = this
-    console.log(vm.$el)
     // 用新的创建的元素 替换老的vm.$el
     vm.$el = patch(vm.$el,vnode)
   }

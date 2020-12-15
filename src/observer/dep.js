@@ -7,6 +7,7 @@ class Dep {
   }
   // 建立关联，依赖关系
   depend () {
+    // Dep.target.addDep(this)
     Dep.target.addDep(this)
   }
   // 往中介添加
