@@ -892,16 +892,50 @@
   function patch(oldVnode, vnode) {
     // oldVnode => id#app   vnode 我们根据模板产生的虚拟dom
     // 将虚拟节点转化成真实节点
-    var el = createElm(vnode); // 产生真实的dom 
+    if (oldVnode.nodeType === 1) {
+      var el = createElm(vnode); // 产生真实的dom 
 
-    var parentElm = oldVnode.parentNode; // 获取老的app的父亲 =》 body
+      var parentElm = oldVnode.parentNode; // 获取老的app的父亲 =》 body
 
-    parentElm.insertBefore(el, oldVnode.nextSibling); // 当前的真实元素插入到app的后面
+      parentElm.insertBefore(el, oldVnode.nextSibling); // 当前的真实元素插入到app的后面
 
-    parentElm.removeChild(oldVnode); // 删除老的节点
+      parentElm.removeChild(oldVnode); // 删除老的节点
 
-    return el;
-  }
+      return el;
+    } else {
+      // 在更新的时 拿老的虚拟节点 和 新的虚拟节点做对比 ，将不同的地方更新真实的dom
+      // 更新功能
+      // 那当前节点 整个
+      // 1.比较两个元素的标签 ，标签不一样直接替换掉即可 parentNode.replaceChild(newel, oldel)
+      if (oldVnode.tag !== vnode.tag) {
+        return oldVnode.el.parentNode.replaceChild(createElm(vnode), oldVnode.el);
+      } // 剩下的是标签一样的
+      // 2.有种可能是标签一样 <div>1</div>   <div>2</div>
+      //  文本节点的虚拟节点tag 都是undefined 文本替换用 DOMElemnt.textContent = newVal
+
+
+      if (!oldVnode.tag) {
+        if (oldVnode.text !== vnode.text) {
+          return oldVnode.el.textContent = vnode.text;
+        }
+      } // 3.其他情况 开始比对标签的属性 和 儿子了
+      // 可以复用老节点了，el是一个DOMElement对象，只改变el里属性或者孩子即可
+      // 所以可以把老vnode的el赋值给新vnode
+
+
+      var _el = vnode.el = oldVnode.el; // 3.1 更新属性，用新的虚拟节点的属性和老的比较，去更新节点
+      // 新老属性做对比
+
+
+      updateProperties(vnode, oldVnode.data);
+      return _el;
+    }
+  } // 
+
+  /**
+   * tag,children,key,data,text vnode上的几个属性
+   * @param {Object} vnode 虚拟节点
+   */
 
   function createElm(vnode) {
     var tag = vnode.tag,
@@ -927,21 +961,44 @@
     return vnode.el;
   } // vue 的渲染流程 =》 先初始化数据 =》 将模板进行编译 =》 render函数 =》 生成虚拟节点 =》 生成真实的dom  =》 扔到页面上
 
+  /**
+   * 
+   * @param {*} vnode 
+   * @param {*} oldProps 旧节点的属性对象 oldVnode.data
+   */
 
   function updateProperties(vnode) {
-    var el = vnode.el;
+    var oldProps = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
     var newProps = vnode.data || {};
+    var el = vnode.el; // 1. 老得有，新的没有 删掉老得 DOMElement.removeAttribute()
 
-    for (var key in newProps) {
-      if (key == 'style') {
+    for (var key in oldProps) {
+      if (!newProps[key]) {
+        el.removeAttribute(key);
+      }
+    } // 2. 比对样式
+
+
+    var newStyle = newProps.style || {};
+    var oldStyle = oldProps.style || {}; // 老的样式中有 新的没有 删除老的样式
+
+    for (var _key in oldStyle) {
+      if (!newStyle[_key]) {
+        el.style[_key] = '';
+      }
+    } // 2. 老得没有，新的有 那就直接用新的去做更新即可
+
+
+    for (var _key2 in newProps) {
+      if (_key2 == 'style') {
         // {color:red}
         for (var styleName in newProps.style) {
           el.style[styleName] = newProps.style[styleName];
         }
-      } else if (key == 'class') {
-        el.className = el["class"];
+      } else if (_key2 == 'class') {
+        el.className = newProps["class"];
       } else {
-        el.setAttribute(key, newProps[key]);
+        el.setAttribute(_key2, newProps[_key2]);
       }
     }
   }
@@ -1081,7 +1138,44 @@
   initMixin(Vue);
   lifeCycleMixin(Vue);
   renderMixin(Vue);
-  stateMixin(Vue);
+  stateMixin(Vue); // 初始化方法
+  var vm1 = new Vue({
+    data: {
+      name: 'zf'
+    }
+  });
+  /**
+   * <li style="background:red" key="A">A</li> 
+   * <li style="background:yellow" key="B">B</li>
+     <li style="background:pink" key="C">C</li>
+     <li style="background:green" key="D">D</li>
+     <li style="background:green" key="F">F</li>
+   */
+
+  var render1 = compileToFunctions("<div class=\"a\" style=\"color:red\">{{name}}\n</div>");
+  var vnode1 = render1.call(vm1); // render方法返回的是虚拟dom
+
+  document.body.appendChild(createElm(vnode1));
+  var vm2 = new Vue({
+    data: {
+      name: 'jw'
+    }
+  });
+  /**
+   * <li style="background:red" key="Z">Z</li>
+     <li style="background:green" key="M">M</li>
+     <li style="background:pink" key="B">B</li>
+     <li style="background:yellow" key="A">A</li>
+     <li style="background:red" key="Q">Q</li>
+   */
+
+  var render2 = compileToFunctions("<div class=\"a\" style=\"color:green\">\n{{name}}\n</div>");
+  var vnode2 = render2.call(vm2); // render方法返回的是虚拟dom
+  // 用新的虚拟节点对比老的虚拟节点，找到差异 去更新老的dom元素
+
+  setTimeout(function () {
+    patch(vnode1, vnode2); // 传入新的虚拟节点和老的 做一个对比
+  }, 3000);
 
   return Vue;
 
