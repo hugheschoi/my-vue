@@ -927,15 +927,144 @@
       // 新老属性做对比
 
 
-      updateProperties(vnode, oldVnode.data);
+      updateProperties(vnode, oldVnode.data); // 比较孩子
+
+      var oldChildren = oldVnode.children || [];
+      var newChildren = vnode.children || [];
+
+      if (oldChildren.length > 0 && newChildren.length > 0) {
+        // 老的有儿子 新的也有儿子  diff 算法
+        updateChildren(oldChildren, newChildren, _el);
+      } else if (oldChildren.length > 0) {
+        // 新的没有
+        _el.innerHTML = '';
+      } else if (newChildren.length > 0) {
+        // 老的没有
+        for (var i = 0; i < newChildren.length; i++) {
+          var child = newChildren[i]; // 浏览器有性能优化 不用自己在搞文档碎片了
+
+          _el.appendChild(createElm(child));
+        }
+      }
+
       return _el;
     }
-  } // 
+  }
 
+  function isSameVnode(oldVnode, newVnode) {
+    return oldVnode.tag == newVnode.tag && oldVnode.key == newVnode.key;
+  } // 儿子间的比较
+
+
+  function updateChildren(oldChildren, newChildren, parent) {
+    // 开头指针
+    var oldStartIndex = 0; // 老的索引
+
+    var oldStartVnode = oldChildren[0]; // 老的索引指向的节点
+
+    var oldEndIndex = oldChildren.length - 1;
+    var oldEndVnode = oldChildren[oldEndIndex];
+    var newStartIndex = 0; // 老的索引
+
+    var newStartVnode = newChildren[0]; // 老的索引指向的节点
+
+    var newEndIndex = newChildren.length - 1;
+    var newEndVnode = newChildren[newEndIndex]; // vue 中的diff算做了很多了优化
+    // DOM中操作有很多常见的逻辑 把节点插入到当前儿子的头部、尾部、儿子倒叙正序
+    // vue2中采用的是双指针的方式
+    // 在尾部添加
+    // 我要做一个循环，同时循环老的和新的，哪个先结束 循环就停止，将多余的删除或者添加进去
+    // 比较谁先循环停止  || 一个true就继续  && 俩都得true
+
+    function makeIndexByKey(children) {
+      var map = {};
+      children.forEach(function (item, index) {
+        if (item.key) {
+          map[item.key] = index; // {A0,B:1,c:2,d:3}
+        }
+      });
+      return map;
+    }
+
+    var map = makeIndexByKey(oldChildren);
+
+    while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
+      if (!oldStartVnode) {
+        // 指针指向了null 跳过这次的处理
+        oldStartVnode = oldChildren[++oldStartIndex];
+      } else if (!oldEndVnode) {
+        oldEndVnode = oldChildren[--oldEndIndex];
+      } else if (isSameVnode(oldStartVnode, newStartVnode)) {
+        // 如果俩人是同一个元素，比对儿子 
+        patch(oldStartVnode, newStartVnode); // 更新属性和再去递归更新子节点
+
+        oldStartVnode = oldChildren[++oldStartIndex];
+        newStartVnode = newChildren[++newStartIndex];
+      } else if (isSameVnode(oldEndVnode, newEndVnode)) {
+        patch(oldEndVnode, newEndVnode);
+        oldEndVnode = oldChildren[--oldEndIndex];
+        newEndVnode = newChildren[--newEndIndex];
+      } else if (isSameVnode(oldStartVnode, newEndVnode)) {
+        // 老的尾部和新的头部比较
+        patch(oldStartVnode, newEndVnode); // 将当前元素插入到尾部的 下一个元素的前面
+
+        parent.insertBefore(oldStartVnode.el, oldEndVnode.el.nextSibling);
+        oldStartVnode = oldChildren[++oldStartIndex];
+        newEndVnode = newChildren[--newEndIndex];
+      } else if (isSameVnode(oldEndVnode, newStartVnode)) {
+        patch(oldEndVnode, newStartVnode);
+        parent.insertBefore(oldEndVnode.el, oldStartVnode.el);
+        oldEndVnode = oldChildren[--oldEndIndex];
+        newStartVnode = newChildren[++newStartIndex]; // 为什么要有key，循环的时候为什么不能用index作为key
+      } else {
+        // 儿子之间没关系 ..... 暴力比对
+        var moveIndex = map[newStartVnode.key]; // 拿到开头的虚拟节点的key 去老的中找
+
+        if (moveIndex == undefined) {
+          // 不需要移动说明没有key复用的
+          parent.insertBefore(createElm(newStartVnode), oldStartVnode.el);
+        } else {
+          var moveVNode = oldChildren[moveIndex]; // 这个老的虚拟节点需要移动
+
+          patch(moveVNode, newStartVnode); // 比较属性和儿子
+
+          parent.insertBefore(moveVNode.el, oldStartVnode.el); // 移动功能,dom映射
+
+          oldChildren[moveIndex] = null;
+        }
+
+        newStartVnode = newChildren[++newStartIndex]; // 用新的不停的去老的里面找
+      } // 反转节点， 头部移动尾部 尾部移动到头部
+
+    }
+
+    if (newStartIndex <= newEndIndex) {
+      for (var i = newStartIndex; i <= newEndIndex; i++) {
+        // 将新的多余的插入进去即可 ,可能是向前添加 还有可能是向后添加
+        // parent.appendChild(createElm(newChildren[i]));
+        // 向后插入 ele = null
+        // 像前插入 ele 就是当前像谁前面插入
+        var ele = newChildren[newEndIndex + 1] == null ? null : newChildren[newEndIndex + 1].el;
+        parent.insertBefore(createElm(newChildren[i]), ele);
+      }
+    } // 老的节点还有没处理的，说明这些老节点是不需要的节点，如过这里面有null说明，这个节点已经被处理过了，跳过即可
+
+
+    if (oldStartIndex <= oldEndIndex) {
+      for (var _i = oldStartIndex; _i <= oldEndIndex; _i++) {
+        var child = oldChildren[_i];
+
+        if (child != null) {
+          parent.removeChild(child.el);
+        }
+      }
+    }
+  }
   /**
    * tag,children,key,data,text vnode上的几个属性
    * @param {Object} vnode 虚拟节点
    */
+
 
   function createElm(vnode) {
     var tag = vnode.tag,
@@ -1145,14 +1274,14 @@
     }
   });
   /**
-   * <li style="background:red" key="A">A</li> 
-   * <li style="background:yellow" key="B">B</li>
+     <li style="background:red" key="A">A</li> 
+     <li style="background:yellow" key="B">B</li>
      <li style="background:pink" key="C">C</li>
      <li style="background:green" key="D">D</li>
      <li style="background:green" key="F">F</li>
    */
 
-  var render1 = compileToFunctions("<div class=\"a\" style=\"color:red\">{{name}}\n</div>");
+  var render1 = compileToFunctions("<ul class=\"a\" style=\"color:red\">\n<li style=\"background:red\" key=\"A\">A</li> \n   <li style=\"background:yellow\" key=\"B\">B</li>\n   <li style=\"background:pink\" key=\"C\">C</li>\n   <li style=\"background:green\" key=\"D\">D</li>\n   <li style=\"background:green\" key=\"F\">F</li>\n</ul>");
   var vnode1 = render1.call(vm1); // render方法返回的是虚拟dom
 
   document.body.appendChild(createElm(vnode1));
@@ -1162,14 +1291,11 @@
     }
   });
   /**
-   * <li style="background:red" key="Z">Z</li>
-     <li style="background:green" key="M">M</li>
-     <li style="background:pink" key="B">B</li>
-     <li style="background:yellow" key="A">A</li>
-     <li style="background:red" key="Q">Q</li>
+   * 
+     
    */
 
-  var render2 = compileToFunctions("<div class=\"a\" style=\"color:green\">\n{{name}}\n</div>");
+  var render2 = compileToFunctions("<ul class=\"a\" style=\"color:#fff\">\n   <li style=\"background:red\" key=\"Z\">Z</li>\n   <li style=\"background:green\" key=\"M\">M</li>\n   <li style=\"background:pink\" key=\"B\">B</li>\n   <li style=\"background:yellow\" key=\"A\">A</li>\n   <li style=\"background:red\" key=\"Q\">Q</li>\n</ul>");
   var vnode2 = render2.call(vm2); // render方法返回的是虚拟dom
   // 用新的虚拟节点对比老的虚拟节点，找到差异 去更新老的dom元素
 
