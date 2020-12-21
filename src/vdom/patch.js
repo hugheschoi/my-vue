@@ -59,7 +59,6 @@ function isSameVnode(oldVnode, newVnode) {
 // 儿子间的比较
 function updateChildren(oldChildren, newChildren, parent) {
 
-
     // 开头指针
     let oldStartIndex = 0; // 老的索引
     let oldStartVnode = oldChildren[0]; // 老的索引指向的节点
