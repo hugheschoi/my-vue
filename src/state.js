@@ -1,6 +1,7 @@
 import { nextTick, proxy } from "./util"
 import { observe } from "./observer/index"
 import Watcher from "./observer/watcher"
+import Dep from "./observer/dep";
 
 export function initState(vm) {
   const opts = vm.$options
@@ -12,6 +13,9 @@ export function initState(vm) {
   }
   if (opts.watch) {
     initWatch(vm)
+  }
+  if (opts.computed) {
+    initComputed(vm)
   }
 }
 function initProps(){}
@@ -69,5 +73,48 @@ export function stateMixin(Vue){
       if(options.immediate){
           cb(); // 如果是immdiate应该立刻执行
       }
+  }
+}
+
+function initComputed (vm) {
+  let computed = vm.$options.computed
+  const watchers = vm._computedWathcers = {} // computed的watcher
+  for (let key in computed) {
+    const userDef = computed[key]
+    const getter = typeof userDef === 'function' ? userDef : userDef.get
+    watchers[key] = new Watcher(vm, getter, () => {}, { lazy: true })
+    defineComputed(vm, key, userDef) // defineReactive()
+  }
+}
+
+function defineComputed (vm, key, userDef) {
+    const definition = {
+        enumerable: true, // 是否可枚举
+        configurable: true,
+        get: () => {},
+        set: () => {}
+    }
+    if (typeof userDef == 'function') {
+        definition.get = createComputedGetter(key)
+    } else {
+        definition.get = createComputedGetter(key)
+        definition.set = userDef.set
+    }
+    Object.defineProperty(vm, key, definition)
+    console.log(vm)
+}
+function createComputedGetter (key) {
+  return function () {
+    const watcher = this._computedWathcers[key]
+
+    if (watcher) {
+      if (watcher.dirty) {
+        watcher.evaluate() // 对当前watcher求值
+      }
+      if (Dep.target) { // 说明还有渲染watcher，也应该一并的收集起来
+        watcher.depend()
+      }
+      return watcher.value // 默认返回watcher上存的值
+    }
   }
 }

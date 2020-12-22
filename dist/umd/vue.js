@@ -448,10 +448,13 @@
     pending$1 = false;
   }
 
+  var id$1 = 0;
+
   var Watcher = /*#__PURE__*/function () {
     function Watcher(vm, exprOrFn, cb, options) {
       _classCallCheck(this, Watcher);
 
+      this.id = id$1++;
       this.deps = []; // watcher记录有多少dep依赖他
 
       this.depsId = new Set();
@@ -464,6 +467,9 @@
        */
 
       this.user = options.user;
+      this.lazy = options.lazy; // lazy代表的是computed计算属性
+
+      this.dirty = this.lazy;
 
       if (typeof exprOrFn === 'function') {
         this.getter = exprOrFn;
@@ -481,7 +487,7 @@
         };
       }
 
-      this.value = this.get(); // 默认先调用一次get，进行取值，将结果赋值给this.value
+      this.value = this.lazy ? void 0 : this.get(); // 默认先调用一次get，进行取值，将结果赋值给this.value
       // 比如 vm.a.a 的值
     }
 
@@ -489,7 +495,7 @@
       key: "get",
       value: function get() {
         pushTarget(this);
-        var result = this.getter();
+        var result = this.getter.call(this.vm);
         popTarget();
         return result;
       }
@@ -516,7 +522,7 @@
         this.value = newValue;
 
         if (this.user) {
-          // 如果是用户watcher
+          // 如果是用户watcher, 监听watch
           this.cb.call(this.vm, newValue, oldValue);
         }
       }
@@ -525,7 +531,29 @@
       value: function update() {
         console.log('update', this); // this.run()
 
-        queueWatcher(this);
+        if (this.lazy) {
+          // 是计算属性
+          this.dirty = true;
+        } else {
+          queueWatcher(this);
+        }
+      }
+    }, {
+      key: "evaluate",
+      value: function evaluate() {
+        this.value = this.get();
+        this.dirty = false; // 变化后更新状态，表示已经是最新的 无"杂质"
+      }
+    }, {
+      key: "depend",
+      value: function depend() {
+        // 计算属性watcher 会存储 dep  dep会存储watcher
+        // 通过watcher找到对应的所有dep，让所有的dep 都记住这个渲染watcher
+        var i = this.deps.length;
+
+        while (i--) {
+          this.deps[i].depend(); // 让dep去存储渲染watcher
+        }
       }
     }]);
 
@@ -543,6 +571,10 @@
 
     if (opts.watch) {
       initWatch(vm);
+    }
+
+    if (opts.computed) {
+      initComputed(vm);
     }
   }
 
@@ -619,6 +651,59 @@
 
       if (options.immediate) {
         cb(); // 如果是immdiate应该立刻执行
+      }
+    };
+  }
+
+  function initComputed(vm) {
+    var computed = vm.$options.computed;
+    var watchers = vm._computedWathcers = {}; // computed的watcher
+
+    for (var key in computed) {
+      var userDef = computed[key];
+      var getter = typeof userDef === 'function' ? userDef : userDef.get;
+      watchers[key] = new Watcher(vm, getter, function () {}, {
+        lazy: true
+      });
+      defineComputed(vm, key, userDef); // defineReactive()
+    }
+  }
+
+  function defineComputed(vm, key, userDef) {
+    var definition = {
+      enumerable: true,
+      // 是否可枚举
+      configurable: true,
+      get: function get() {},
+      set: function set() {}
+    };
+
+    if (typeof userDef == 'function') {
+      definition.get = createComputedGetter(key);
+    } else {
+      definition.get = createComputedGetter(key);
+      definition.set = userDef.set;
+    }
+
+    Object.defineProperty(vm, key, definition);
+    console.log(vm);
+  }
+
+  function createComputedGetter(key) {
+    return function () {
+      var watcher = this._computedWathcers[key];
+
+      if (watcher) {
+        if (watcher.dirty) {
+          watcher.evaluate(); // 对当前watcher求值
+        }
+
+        if (Dep.target) {
+          // 说明还有渲染watcher，也应该一并的收集起来
+          watcher.depend();
+        }
+
+        return watcher.value; // 默认返回watcher上存的值
       }
     };
   }

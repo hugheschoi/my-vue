@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d980bcda-711b-493e-8c31-c7cb2ef5a74e" name="默认的" comment="" />
+    <list default="true" id="d980bcda-711b-493e-8c31-c7cb2ef5a74e" name="默认的" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/umd/vue.js" beforeDir="false" afterPath="$PROJECT_DIR$/dist/umd/vue.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/umd/vue.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/dist/umd/vue.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/observer/watcher.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/observer/watcher.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/state.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/state.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -28,7 +34,8 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="preferences.updates" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="settings.editor.selected.configurable" value="preferences.general" />
     <property name="vue.rearranger.settings.migration" value="true" />
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
@@ -41,6 +48,7 @@
       <updated>1608417647300</updated>
       <workItem from="1608417650229" duration="104000" />
       <workItem from="1608417758881" duration="44000" />
+      <workItem from="1608601496041" duration="5965000" />
     </task>
     <servers />
   </component>
@@ -58,5 +66,9 @@
       </map>
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
   </component>
 </project>
