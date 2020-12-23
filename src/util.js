@@ -29,6 +29,18 @@ export const LIFECYCLE_HOOKS = [
 ]
 const strats = {}
 
+// parentVal 是 全局的components
+// 组件的合并策略是最近策略，先找自己的再找全局的 - 原型链！， 将全局组件放在原型链上。
+strats.components = function (parentVal, childVal) {
+  let res = Object.create(parentVal)
+  if (childVal) {
+    for (let key in childVal) {
+      res[key] = childVal[key]
+    }
+  }
+  return res
+}
+
 LIFECYCLE_HOOKS.forEach(hook => {
   strats[hook] = mergeHook
 })
@@ -113,3 +125,18 @@ export function nextTick(cb){ // 因为内部会调用nextTick 用户也会调�
         pending = true;
     }
 }
+
+function makeMap(str) {
+  const mapping = {};
+  const list = str.split(',');
+  for(let i =0; i< list.length;i++){
+      mapping[list[i]] = true;
+  }
+  return (key)=>{ // 判断这个标签名是不是原生标签
+      return mapping[key];
+  }
+}
+
+export const isReservedTag = makeMap(
+  'a,div,img,image,text,span,p,button,input,textarea,ul,li'
+)

@@ -39,6 +39,7 @@ function defineReactive(data, key, value) {
   const dep = new Dep()
   Object.defineProperty(data, key, {
     get () {
+      console.log(key, Dep.target)
       if (Dep.target) {
         dep.depend()
         if (valueObserver) {

@@ -150,6 +150,16 @@ function updateChildren(oldChildren, newChildren, parent) {
         }
     }
 }
+function createComponent(vnode){
+    // 调用hook中init方法 
+    let i = vnode.data;
+    if((i = i.hook) && (i = i.init)){ // i就是init方法
+        i(vnode); // 内部会去new 组件 会将实例挂载在vnode上
+    }
+    if(vnode.componentInstance){ // 如果是组件返回true
+        return true;
+    }
+}
 /**
  * tag,children,key,data,text vnode上的几个属性
  * @param {Object} vnode 虚拟节点
@@ -157,10 +167,13 @@ function updateChildren(oldChildren, newChildren, parent) {
 export function createElm(vnode){
     let {tag,children,key,data,text} = vnode;
     if(typeof tag == 'string'){ // 创建元素 放到vnode.el上
+        if(createComponent(vnode)){ // 组件渲染后的结果 放到当前组件的实例上 vm.$el
+            return vnode.componentInstance.$el; // 组件对应的dom元素
+        }
         vnode.el = document.createElement(tag);
         // 只有元素才有属性
         updateProperties(vnode);
-        children.forEach(child=>{ // 遍历儿子 将儿子渲染后的结果扔到父亲中
+        children && children.forEach(child=>{ // 遍历儿子 将儿子渲染后的结果扔到父亲中
             vnode.el.appendChild(createElm(child));
         })
     }else{ // 创建文件 放到vnode.el上
